@@ -1,0 +1,45 @@
+require "json"
+
+project_path = File.expand_path(ARGV.fetch(0))
+output_path = File.expand_path(ARGV.fetch(ARGV.index("--output") + 1))
+format = if (index = ARGV.index("--format"))
+           ARGV.fetch(index + 1)
+         else
+           "markdown"
+         end
+
+report = {
+  "reports" => [
+    {
+      "name" => File.basename(project_path),
+      "root" => project_path,
+      "stack" => "ruby-tool",
+      "rules" => [
+        { "id" => "docs.readme", "status" => "pass", "message" => "README exists", "evidence" => ["README.md"] },
+        { "id" => "docs.architecture", "status" => "warn", "message" => "Architecture note is missing", "evidence" => [] },
+        { "id" => "release.git", "status" => "fail", "message" => "Git worktree is dirty", "evidence" => [] }
+      ],
+      "summary" => {
+        "pass" => 8,
+        "warn" => 1,
+        "fail" => 1,
+        "not_applicable" => 1,
+        "ready" => false
+      }
+    }
+  ]
+}
+
+if format == "json"
+  File.write(output_path, JSON.pretty_generate(report))
+else
+  File.write(
+    output_path,
+    <<~MARKDOWN
+      # Fixture Readiness Report
+
+      Project: #{File.basename(project_path)}
+      Ready: no
+    MARKDOWN
+  )
+end

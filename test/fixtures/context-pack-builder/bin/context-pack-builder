@@ -1,0 +1,14 @@
+project_path = File.expand_path(ARGV.fetch(0))
+output_path = File.expand_path(ARGV.fetch(ARGV.index("--output") + 1))
+
+File.write(
+  output_path,
+  <<~MARKDOWN
+    # Fixture Context Pack
+
+    Project: #{File.basename(project_path)}
+
+    Commands:
+    - bundle exec rake test
+  MARKDOWN
+)

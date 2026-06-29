@@ -1,0 +1,25 @@
+command = ARGV.fetch(0)
+prompt_id = ARGV.fetch(1)
+raise "expected materialize command" unless command == "materialize"
+
+values = {}
+index = 2
+while index < ARGV.length
+  if ARGV[index] == "--var"
+    key, value = ARGV.fetch(index + 1).split("=", 2)
+    values[key] = value
+    index += 2
+  else
+    index += 1
+  end
+end
+
+puts <<~PROMPT
+  # Fixture Prompt
+
+  Prompt: #{prompt_id}
+  Repository: #{values.fetch("repo_name")}
+  Task context: #{values.fetch("task_context")}
+  Constraints: #{values.fetch("constraints")}
+  Verification expectations: #{values.fetch("verification")}
+PROMPT

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+bundle exec rake test
+rm -rf tmp/demo-packet
+ruby bin/review-packet-builder test/fixtures/demo-repo \
+  --output tmp/demo-packet \
+  --context-pack-builder-root test/fixtures/context-pack-builder \
+  --eval-harness-root test/fixtures/eval-harness \
+  --prompt-registry-root test/fixtures/prompt-registry
+test -f tmp/demo-packet/context-pack.md
+test -f tmp/demo-packet/readiness.md
+test -f tmp/demo-packet/readiness.json
+test -f tmp/demo-packet/prompt.md
+test -f tmp/demo-packet/packet.md
