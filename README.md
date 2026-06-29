@@ -133,3 +133,7 @@ The tool has three responsibilities:
 - render a concise operator index
 
 More detail lives in [docs/architecture.md](./docs/architecture.md).
+
+## License
+
+MIT. See [LICENSE.txt](./LICENSE.txt).
