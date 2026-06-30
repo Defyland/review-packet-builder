@@ -65,3 +65,38 @@ Verification evidence:
 
 - targeted tests using fixture CLIs under `test/fixtures`
 - `./bin/check`
+
+## 2026-06-30: Stamp Packets With Target And Tool Provenance
+
+Context: the first integrated packet already carried the generated artifacts and
+the exact shell commands used to build them, but it still made a reviewer infer
+too much. A cheap model or human could see which CLIs ran, yet could not tell
+at a glance which target revision and which upstream tool revisions produced the
+packet.
+
+Options considered:
+
+- keep only the executed command list
+- record provenance only inside the generated child artifacts
+- surface target and tool provenance directly in `packet.md`
+
+Choice: surface target and sibling-tool provenance directly in `packet.md`.
+
+Why:
+
+- it gives the consumer one top-level freshness summary
+- it keeps packet trust tied to concrete repository state instead of only file
+  timestamps
+- it avoids forcing the reviewer to mine each child artifact before deciding
+  whether regeneration is needed
+
+Rejected:
+
+- commands only: path visibility is weaker than commit visibility
+- child artifacts only: the packet index should summarize trust, not only link
+  to deeper evidence
+
+Verification evidence:
+
+- `bundle exec rake test`
+- `ruby bin/review-packet-builder ../rails_doctor --ruby /Users/allanflavio/.asdf/installs/ruby/3.4.9/bin/ruby --output /tmp/rails_doctor-review-packet`

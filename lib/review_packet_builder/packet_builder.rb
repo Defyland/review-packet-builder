@@ -38,6 +38,7 @@ module ReviewPacketBuilder
       repo_name = File.basename(project_root)
       artifacts = artifact_paths(packet_dir)
       commands = []
+      provenance = build_provenance(project_root)
 
       run_command(
         [@ruby_executable, cli_path(@context_pack_builder_root, "context-pack-builder"), project_root, "--output", artifacts[:context_pack]],
@@ -70,6 +71,7 @@ module ReviewPacketBuilder
           report: report,
           artifacts: artifacts,
           commands: commands,
+          provenance: provenance,
           generated_at: Time.now.utc.iso8601
         )
       )
@@ -79,11 +81,23 @@ module ReviewPacketBuilder
         output_dir: packet_dir,
         artifacts: artifacts,
         report: report,
-        commands: commands
+        commands: commands,
+        provenance: provenance
       }
     end
 
     private
+
+    def build_provenance(project_root)
+      {
+        project: source_snapshot(project_root),
+        tools: {
+          context_pack_builder: source_snapshot(@context_pack_builder_root),
+          eval_harness: source_snapshot(@eval_harness_root),
+          prompt_registry: source_snapshot(@prompt_registry_root)
+        }
+      }
+    end
 
     def artifact_paths(packet_dir)
       {
@@ -144,6 +158,34 @@ module ReviewPacketBuilder
 
     def default_verification
       "Read context-pack.md and readiness.md, then rerun the concrete repo contract commands they reference before concluding."
+    end
+
+    def source_snapshot(root)
+      {
+        root: root,
+        git_branch: git_value(root, "rev-parse", "--abbrev-ref", "HEAD"),
+        git_commit: git_value(root, "rev-parse", "--short=12", "HEAD"),
+        git_dirty: git_dirty?(root)
+      }
+    end
+
+    def git_value(root, *args)
+      stdout, _stderr, status = Open3.capture3("git", "-C", root, *args)
+      return unless status.success?
+
+      value = stdout.strip
+      value.empty? ? nil : value
+    rescue Errno::ENOENT
+      nil
+    end
+
+    def git_dirty?(root)
+      stdout, _stderr, status = Open3.capture3("git", "-C", root, "status", "--short")
+      return unless status.success?
+
+      stdout.strip.empty? ? "clean" : "dirty"
+    rescue Errno::ENOENT
+      nil
     end
   end
 end

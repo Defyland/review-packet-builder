@@ -8,7 +8,8 @@ It takes one target repository and produces one local packet directory with:
 - a generated context pack from `context-pack-builder`
 - a readiness report from `eval-harness`
 - a materialized task prompt from `prompt-registry`
-- an index file that tells a human or cheap model how to use the packet
+- an index file that tells a human or cheap model how to use the packet and
+  which target/tool revisions generated it
 
 This asset exists because the workspace already had the building blocks, but no
 single in-scope command that made them usable together end to end.
@@ -41,6 +42,8 @@ For one target repo, the builder writes:
 
 The output is local and deterministic. There is no remote service, queue,
 database, or hosted prompt layer.
+`packet.md` also records target-repo and sibling-tool provenance so a reviewer
+can tell whether the packet is fresh enough to trust.
 
 ## Five-Minute Evaluation
 
@@ -120,7 +123,7 @@ that complexity.
 
 - tests pass
 - the CLI can build a packet end to end
-- the packet contains the expected artifact set
+- the packet contains the expected artifact set and provenance summary
 
 For a workspace-level smoke path, use the real `rails_doctor` example above.
 

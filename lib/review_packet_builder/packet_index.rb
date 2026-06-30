@@ -4,7 +4,7 @@ module ReviewPacketBuilder
   module PacketIndex
     module_function
 
-    def render(project_name:, prompt_id:, report:, artifacts:, commands:, generated_at:)
+    def render(project_name:, prompt_id:, report:, artifacts:, commands:, provenance:, generated_at:)
       summary = report.fetch("summary")
       non_pass_rules = Array(report.fetch("rules")).select do |rule|
         %w[warn fail].include?(rule.fetch("status"))
@@ -24,6 +24,10 @@ module ReviewPacketBuilder
         - [readiness.md](./#{File.basename(artifacts.fetch(:readiness_markdown))})
         - [readiness.json](./#{File.basename(artifacts.fetch(:readiness_json))})
         - [prompt.md](./#{File.basename(artifacts.fetch(:prompt))})
+
+        ## Provenance
+
+        #{render_provenance(provenance)}
 
         ## Non-Pass Rules
 
@@ -49,6 +53,31 @@ module ReviewPacketBuilder
       non_pass_rules.map do |rule|
         "- `#{rule.fetch("id")}` (`#{rule.fetch("status")}`): #{rule.fetch("message")}"
       end.join("\n")
+    end
+
+    def render_provenance(provenance)
+      project_line = render_snapshot("target repo", provenance.fetch(:project))
+      tool_lines = provenance.fetch(:tools).map do |tool_name, snapshot|
+        render_snapshot(tool_name.to_s.tr("_", "-"), snapshot)
+      end
+
+      ([project_line] + tool_lines).join("\n")
+    end
+
+    def render_snapshot(label, snapshot)
+      root = snapshot.fetch(:root)
+      branch = snapshot[:git_branch]
+      commit = snapshot[:git_commit]
+      dirty = snapshot[:git_dirty]
+
+      details =
+        if branch && commit && dirty
+          "`#{branch}` @ `#{commit}` (`#{dirty}`)"
+        else
+          "git unavailable"
+        end
+
+      "- `#{label}`: `#{root}` - #{details}"
     end
   end
 end
