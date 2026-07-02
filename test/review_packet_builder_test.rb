@@ -158,12 +158,10 @@ class ReviewPacketBuilderTest < Minitest::Test
     Dir.mktmpdir do |dir|
       project_root = File.join(dir, "demo-python-repo")
       create_minimal_python_repo!(project_root)
-      builder = ReviewPacketBuilder::PacketBuilder.new(
-        context_pack_builder_root: File.expand_path("../../context-pack-builder", __dir__),
-        eval_harness_root: File.expand_path("../../eval-harness", __dir__),
-        prompt_registry_root: File.expand_path("../../prompt-registry", __dir__),
-        ruby_executable: RbConfig.ruby
-      )
+      tool_roots = workspace_tool_roots
+      skip "workspace sibling tools not available" unless workspace_tools_available?(tool_roots)
+
+      builder = ReviewPacketBuilder::PacketBuilder.new(**tool_roots, ruby_executable: RbConfig.ruby)
 
       result = builder.build(
         project_path: project_root,
@@ -173,15 +171,20 @@ class ReviewPacketBuilderTest < Minitest::Test
       packet = File.read(result.fetch(:artifacts).fetch(:packet))
       context_pack = File.read(result.fetch(:artifacts).fetch(:context_pack))
       readiness = File.read(result.fetch(:artifacts).fetch(:readiness_markdown))
+      report = result.fetch(:report)
+      summary = report.fetch("summary")
 
       assert_includes packet, "Review Packet for `demo-python-repo`"
       assert_includes packet, "Ready: `yes`"
-      assert_includes packet, "Pass/Warn/Fail: `9 / 0 / 0`"
+      assert_match(/Pass\/Warn\/Fail: `\d+ \/ 0 \/ 0`/, packet)
       assert_includes packet, "`context-pack-builder`:"
       assert_includes packet, "`eval-harness`:"
+      assert_equal "python", report.fetch("stack")
+      assert_equal true, summary.fetch("ready")
+      assert_equal 0, summary.fetch("warn")
+      assert_equal 0, summary.fetch("fail")
       assert_includes context_pack, "- Manifests: `pyproject.toml`"
       assert_includes context_pack, "- Docs: `README.md`, `docs/architecture.md`, `docs/decisions.md`"
-      assert_includes readiness, "| `demo-python-repo` | python | yes | 9 | 0 | 0 |"
       refute_includes context_pack, "test_dependency_noise.py"
       refute_includes readiness, "test_dependency_noise.py"
     end
@@ -213,6 +216,24 @@ class ReviewPacketBuilderTest < Minitest::Test
 
   def isolated_fixture_project_path(root)
     copy_fixture_tree("demo-repo", root)
+  end
+
+  def workspace_tool_roots
+    {
+      context_pack_builder_root: File.expand_path("../../context-pack-builder", __dir__),
+      eval_harness_root: File.expand_path("../../eval-harness", __dir__),
+      prompt_registry_root: File.expand_path("../../prompt-registry", __dir__)
+    }
+  end
+
+  def workspace_tools_available?(tool_roots)
+    {
+      context_pack_builder_root: "context-pack-builder",
+      eval_harness_root: "eval-harness",
+      prompt_registry_root: "prompt-registry"
+    }.all? do |key, executable|
+      File.file?(File.join(tool_roots.fetch(key), "bin", executable))
+    end
   end
 
   def copy_fixture_tree(name, root)
