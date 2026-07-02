@@ -154,6 +154,39 @@ class ReviewPacketBuilderTest < Minitest::Test
     end
   end
 
+  def test_builds_packet_with_real_workspace_tools_for_minimal_python_repo
+    Dir.mktmpdir do |dir|
+      project_root = File.join(dir, "demo-python-repo")
+      create_minimal_python_repo!(project_root)
+      builder = ReviewPacketBuilder::PacketBuilder.new(
+        context_pack_builder_root: File.expand_path("../../context-pack-builder", __dir__),
+        eval_harness_root: File.expand_path("../../eval-harness", __dir__),
+        prompt_registry_root: File.expand_path("../../prompt-registry", __dir__),
+        ruby_executable: RbConfig.ruby
+      )
+
+      result = builder.build(
+        project_path: project_root,
+        output_dir: File.join(dir, "python-packet")
+      )
+
+      packet = File.read(result.fetch(:artifacts).fetch(:packet))
+      context_pack = File.read(result.fetch(:artifacts).fetch(:context_pack))
+      readiness = File.read(result.fetch(:artifacts).fetch(:readiness_markdown))
+
+      assert_includes packet, "Review Packet for `demo-python-repo`"
+      assert_includes packet, "Ready: `yes`"
+      assert_includes packet, "Pass/Warn/Fail: `9 / 0 / 0`"
+      assert_includes packet, "`context-pack-builder`:"
+      assert_includes packet, "`eval-harness`:"
+      assert_includes context_pack, "- Manifests: `pyproject.toml`"
+      assert_includes context_pack, "- Docs: `README.md`, `docs/architecture.md`, `docs/decisions.md`"
+      assert_includes readiness, "| `demo-python-repo` | python | yes | 9 | 0 | 0 |"
+      refute_includes context_pack, "test_dependency_noise.py"
+      refute_includes readiness, "test_dependency_noise.py"
+    end
+  end
+
   private
 
   def fixture_builder
@@ -207,5 +240,65 @@ class ReviewPacketBuilderTest < Minitest::Test
 
   def capture_git!(path, *args)
     run_git!(path, *args).strip
+  end
+
+  def create_minimal_python_repo!(path)
+    FileUtils.mkdir_p(path)
+    File.write(
+      File.join(path, "README.md"),
+      <<~MARKDOWN
+        # Demo Python Repo
+
+        ```sh
+        python3 -m pytest
+        ```
+      MARKDOWN
+    )
+    File.write(
+      File.join(path, "pyproject.toml"),
+      <<~TOML
+        [project]
+        name = "demo-python-repo"
+        version = "0.1.0"
+      TOML
+    )
+
+    FileUtils.mkdir_p(File.join(path, ".github", "workflows"))
+    File.write(
+      File.join(path, ".github", "workflows", "ci.yml"),
+      <<~YAML
+        name: ci
+        on: [push]
+        jobs:
+          test:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v4
+      YAML
+    )
+
+    FileUtils.mkdir_p(File.join(path, "docs"))
+    File.write(File.join(path, "docs", "architecture.md"), "# Architecture\n")
+    File.write(File.join(path, "docs", "decisions.md"), "# Decisions\n")
+
+    FileUtils.mkdir_p(File.join(path, "tests"))
+    File.write(
+      File.join(path, "tests", "test_smoke.py"),
+      <<~PYTHON
+        def test_truth():
+            assert True
+      PYTHON
+    )
+
+    FileUtils.mkdir_p(File.join(path, ".venv", "lib", "python3.13", "site-packages", "noise"))
+    File.write(
+      File.join(path, ".venv", "lib", "python3.13", "site-packages", "noise", "test_dependency_noise.py"),
+      <<~PYTHON
+        def test_dependency_noise():
+            assert False
+      PYTHON
+    )
+
+    initialize_git_repo!(path)
   end
 end
