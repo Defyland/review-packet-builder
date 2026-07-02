@@ -59,6 +59,12 @@ Build a real packet for an in-scope repo:
 ruby bin/review-packet-builder ../rails_doctor --output tmp/rails_doctor-packet
 ```
 
+Build a real packet for a Python research repo:
+
+```sh
+ruby bin/review-packet-builder ../brainbench --output tmp/brainbench-packet
+```
+
 Inspect the generated index:
 
 ```sh
@@ -69,6 +75,12 @@ Inspect the materialized prompt:
 
 ```sh
 sed -n '1,120p' tmp/rails_doctor-packet/prompt.md
+```
+
+Inspect the Python packet index:
+
+```sh
+sed -n '1,120p' tmp/brainbench-packet/packet.md
 ```
 
 ## CLI

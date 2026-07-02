@@ -100,3 +100,38 @@ Verification evidence:
 
 - `bundle exec rake test`
 - `ruby bin/review-packet-builder ../rails_doctor --ruby /Users/allanflavio/.asdf/installs/ruby/3.4.9/bin/ruby --output /tmp/rails_doctor-review-packet`
+
+## 2026-07-02: Cover A Real Python Consumer With The Actual Sibling Tools
+
+Context: after `context-pack-builder` and `eval-harness` learned to recognize
+`pyproject.toml` projects and ignore `.venv` noise, the workspace now had one
+real cross-stack consumer worth protecting: building a review packet for
+`brainbench`. The existing tests still proved packet assembly mainly through
+fixture CLIs, which was good for unit speed but weak against integration drift
+between the published sibling tools.
+
+Options considered:
+
+- keep fixture-only coverage and rely on manual workspace smoke checks
+- add one real-tool integration test for a small temporary Python repo
+- add a broad workspace integration test that shells into `brainbench`
+
+Choice: add one real-tool integration test for a small temporary Python repo.
+
+Why:
+
+- it proves the actual sibling CLIs still compose end to end
+- it covers the new Python consumer shape without tying the repo contract to a
+  heavyweight workspace fixture
+- it keeps the regression deterministic and local to this repo
+
+Rejected:
+
+- fixture-only coverage: too easy for cross-repo drift to stay invisible
+- direct `brainbench` integration: stronger than needed and more expensive than
+  a minimal synthetic repo
+
+Verification evidence:
+
+- `bundle exec rake test`
+- `ruby bin/review-packet-builder ../brainbench --output /tmp/brainbench-review-packet`
